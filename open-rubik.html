@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RUBIK'S CUBE // NEON EDITION</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #ff00e5;
+  --neon-green: #39ff14;
+  --neon-orange: #ff6600;
+  --bg-dark: #050510;
+  --bg-card: rgba(10, 10, 30, 0.85);
+  --border-glow: rgba(0, 240, 255, 0.2);
+}
+
+body {
+  background: var(--bg-dark);
+  color: #e0e0f0;
+  font-family: 'Rajdhani', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  cursor: grab;
+  user-select: none;
+}
+
+body:active { cursor: grabbing; }
+
+#canvas-container {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+}
+
+canvas { display: block; }
+
+/* SHADER BACKGROUND */
+#bg-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+}
+
+/* SCANLINES */
+.scanlines {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 240, 255, 0.004) 3px,
+    rgba(0, 240, 255, 0.004) 6px
+  );
+}
+
+/* VIGNETTE */
+.vignette {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(2, 2, 15, 0.5) 100%);
+}
+
+/* HUD OVERLAY */
+.hud {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hud-top {
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+}
+
+.hud-bottom {
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 24px 32px 52px;
+}
+
+.logo {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 28px;
+  letter-spacing: 6px;
+  line-height: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    #ff3030,
+    #ff8c00,
+    #ffff00,
+    #00cc44,
+    #0066ff,
+    #ff3030,
+    #ff8c00,
+    #ffff00,
+    #00cc44,
+    #0066ff
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: logoGradient 6s linear infinite;
+  filter: drop-shadow(0 0 12px rgba(0,200,255,0.3)) drop-shadow(0 0 25px rgba(255,0,229,0.15));
+}
+
+@keyframes logoGradient {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Remove individual letter colors — gradient handles it */
+.logo span { -webkit-text-fill-color: transparent; }
+
+.logo-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 300;
+  font-size: 11px;
+  letter-spacing: 8px;
+  color: rgba(0,240,255,0.5);
+  margin-top: 4px;
+}
+
+/* SCRAMBLE BUTTON */
+.scramble-btn {
+  pointer-events: all;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #050510;
+  background: linear-gradient(135deg, var(--neon-cyan), #00c8ff, var(--neon-magenta));
+  box-shadow: 0 0 20px rgba(0,240,255,0.3), 0 0 40px rgba(0,240,255,0.1);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.scramble-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 70%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
+
+.scramble-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(0,240,255,0.5), 0 0 60px rgba(0,240,255,0.2), 0 0 15px rgba(255,0,229,0.3);
+}
+
+.scramble-btn:active {
+  transform: translateY(0);
+}
+
+/* STATS PANEL */
+.stats-panel {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(0,240,255,0.15);
+}
+
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.stat-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 15px rgba(0,240,255,0.4);
+}
+
+/* CONTROLS PANEL */
+.controls-panel {
+  pointer-events: all;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 700px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+}
+
+.ctrl-btn {
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  color: var(--neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.ctrl-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0,240,255,0.2), inset 0 0 15px rgba(0,240,255,0.1);
+  transform: translateY(-1px);
+}
+
+.ctrl-btn:active {
+  transform: translateY(0);
+}
+
+.ctrl-btn.accent {
+  background: rgba(255, 0, 229, 0.1);
+  border-color: rgba(255, 0, 229, 0.3);
+  color: var(--neon-magenta);
+}
+
+.ctrl-btn.accent:hover {
+  background: rgba(255, 0, 229, 0.2);
+  border-color: var(--neon-magenta);
+  box-shadow: 0 0 15px rgba(255,0,229,0.2), inset 0 0 15px rgba(255,0,229,0.1);
+}
+
+.ctrl-btn.success {
+  background: rgba(57, 255, 20, 0.08);
+  border-color: rgba(57, 255, 20, 0.25);
+  color: var(--neon-green);
+}
+
+.ctrl-btn.success:hover {
+  background: rgba(57, 255, 20, 0.15);
+  border-color: var(--neon-green);
+  box-shadow: 0 0 15px rgba(57,255,20,0.2), inset 0 0 15px rgba(57,255,20,0.1);
+}
+
+.ctrl-divider {
+  width: 1px;
+  background: rgba(0,240,255,0.15);
+  margin: 0 6px;
+  align-self: stretch;
+}
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 28px;
+  pointer-events: none;
+}
+
+.bottom-nav-left,
+.bottom-nav-right {
+  display: flex;
+  gap: 6px;
+}
+
+.nav-link {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.35);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.nav-link svg {
+  opacity: 0.5;
+  transition: opacity 0.25s ease;
+}
+
+.nav-link:hover {
+  color: var(--neon-cyan);
+  border-color: rgba(0, 240, 255, 0.2);
+  background: rgba(0, 240, 255, 0.04);
+}
+
+.nav-link:hover svg {
+  opacity: 1;
+  stroke: var(--neon-cyan);
+}
+
+/* TOAST */
+.toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  z-index: 200;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: var(--neon-cyan);
+  background: rgba(5, 5, 20, 0.92);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  backdrop-filter: blur(16px);
+  padding: 14px 28px;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.08);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ABOUT OVERLAY */
+.about-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 150;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: rgba(5, 5, 16, 0.88);
+  backdrop-filter: blur(12px);
+}
+
+.about-overlay.active {
+  display: flex;
+}
+
+.about-content {
+  text-align: center;
+  max-width: 420px;
+  padding: 36px 40px;
+  background: rgba(10, 10, 30, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  border-radius: 14px;
+  animation: solvedIn 0.4s ease-out;
+}
+
+.about-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  background: linear-gradient(90deg, #ff3030, #ff8c00, #ffff00, #00cc44, #0066ff, #ff3030);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: logoGradient 6s linear infinite;
+  margin-bottom: 4px;
+}
+
+.about-version {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: rgba(0, 240, 255, 0.4);
+  margin-bottom: 20px;
+}
+
+.about-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.about-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--neon-cyan);
+  text-decoration: none;
+  padding: 10px 20px;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 240, 255, 0.05);
+  transition: all 0.25s ease;
+  margin: 16px 0 24px;
+}
+
+.about-link:hover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+}
+
+.about-close-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.4);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.about-close-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* KEY HINTS */
+.key-hints {
+  position: fixed;
+  bottom: 76px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 28px;
+  pointer-events: none;
+  gap: 40px;
+}
+
+.key-hint-panel {
+  background: rgba(10, 10, 30, 0.7);
+  border: 1px solid rgba(0, 240, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  backdrop-filter: blur(8px);
+}
+
+.key-hint-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--neon-cyan);
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+.key-hint-row {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  white-space: nowrap;
+}
+
+.key-hint-sep {
+  height: 1px;
+  background: rgba(0,240,255,0.08);
+  margin: 4px 0;
+}
+
+kbd {
+  display: inline-block;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  color: rgba(0, 240, 255, 0.6);
+  line-height: 1.4;
+  min-width: 18px;
+  text-align: center;
+}
+
+.key-indicator {
+  display: inline-block;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.key-indicator.active {
+  background: rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+}
+
+/* SOLVED OVERLAY */
+.solved-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 100;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: rgba(5, 5, 16, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+.solved-overlay.active {
+  display: flex;
+}
+
+.solved-content {
+  text-align: center;
+  animation: solvedIn 0.6s ease-out;
+}
+
+@keyframes solvedIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.solved-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green), var(--neon-magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(57,255,20,0.4));
+  letter-spacing: 8px;
+  margin-bottom: 8px;
+}
+
+.solved-emoji {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: celebBounce 0.6s ease-out;
+}
+
+@keyframes celebBounce {
+  0% { transform: scale(0) rotate(-20deg); }
+  60% { transform: scale(1.3) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.solved-subtitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 20px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.solved-stats {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  color: var(--neon-cyan);
+  letter-spacing: 4px;
+  margin-bottom: 32px;
+}
+
+.solved-btn {
+  pointer-events: all;
+  background: rgba(57, 255, 20, 0.1);
+  border: 2px solid var(--neon-green);
+  color: var(--neon-green);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  padding: 14px 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.solved-btn:hover {
+  background: rgba(57, 255, 20, 0.2);
+  box-shadow: 0 0 30px rgba(57,255,20,0.3);
+}
+
+/* INSTRUCTIONS */
+.instructions {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.18);
+  text-transform: uppercase;
+  font-family: 'Orbitron', sans-serif;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* PARTICLES */
+.corner-decor {
+  position: fixed;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.corner-decor.tl { top: 20px; left: 20px; }
+.corner-decor.tr { top: 20px; right: 20px; }
+.corner-decor.bl { bottom: 20px; left: 20px; }
+.corner-decor.br { bottom: 20px; right: 20px; }
+
+.corner-line {
+  stroke: rgba(0,240,255,0.15);
+  stroke-width: 1;
+}
+
+/* Add span class for nav link text */
+.nav-link-text {
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 900px) {
+  .stats-panel { gap: 16px; }
+  .stat-value { font-size: 18px; }
+  .key-hints { padding: 0 16px; }
+  .key-hint-panel { padding: 8px 10px; }
+  .key-hint-row { font-size: 10px; }
+}
+
+@media (max-width: 768px) {
+  .logo { font-size: 18px; letter-spacing: 3px; }
+  .stat-value { font-size: 16px; }
+  .stat-label { font-size: 8px; letter-spacing: 2px; }
+  .stats-panel { gap: 14px; }
+  .hud-top { padding: 14px 16px; }
+  .solved-title { font-size: 28px; letter-spacing: 4px; }
+  .solved-emoji { font-size: 48px; }
+  .instructions { font-size: 8px; letter-spacing: 2px; }
+  .scramble-btn { font-size: 9px; padding: 7px 14px; letter-spacing: 2px; }
+  .bottom-nav { padding: 8px 14px; }
+  .nav-link { font-size: 8px; padding: 6px 10px; letter-spacing: 1px; }
+  .key-hints { display: none; }
+}
+
+@media (max-width: 520px) {
+  .logo { font-size: 14px; letter-spacing: 2px; }
+  .stats-panel { display: none; }
+  .hud-top { padding: 12px 14px; }
+  .scramble-btn { font-size: 8px; padding: 6px 12px; letter-spacing: 1px; }
+  .instructions { display: none; }
+  .nav-link-text { display: none; }
+  .nav-link { padding: 7px 10px; gap: 0; }
+  .solved-title { font-size: 22px; letter-spacing: 3px; }
+  .solved-subtitle { font-size: 14px; letter-spacing: 3px; }
+  .solved-stats { font-size: 14px; letter-spacing: 2px; }
+  .solved-emoji { font-size: 40px; }
+  .solved-btn { font-size: 11px; padding: 10px 28px; letter-spacing: 3px; }
+  .key-hints { display: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div id="canvas-container"></div>
+
+<!-- CORNER DECORATIONS -->
+<svg class="corner-decor tl" width="40" height="40"><line class="corner-line" x1="0" y1="0" x2="40" y2="0"/><line class="corner-line" x1="0" y1="0" x2="0" y2="40"/></svg>
+<svg class="corner-decor tr" width="40" height="40"><line class="corner-line" x1="0" y1="0" x2="40" y2="0"/><line class="corner-line" x1="40" y1="0" x2="40" y2="40"/></svg>
+<svg class="corner-decor bl" width="40" height="40"><line class="corner-line" x1="0" y1="40" x2="40" y2="40"/><line class="corner-line" x1="0" y1="0" x2="0" y2="40"/></svg>
+<svg class="corner-decor br" width="40" height="40"><line class="corner-line" x1="0" y1="40" x2="40" y2="40"/><line class="corner-line" x1="40" y1="0" x2="40" y2="40"/></svg>
+
+<!-- HUD TOP -->
+<div class="hud hud-top">
+  <div class="logo">OPEN RUBIK</div>
+  <div class="stats-panel">
+    <div class="stat-item">
+      <div class="stat-label">Moves</div>
+      <div class="stat-value" id="move-count">0</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <div class="stat-label">Time</div>
+      <div class="stat-value" id="timer">00:00</div>
+    </div>
+  </div>
+  <button class="scramble-btn" onclick="scrambleCube()">SCRAMBLE</button>
+</div>
+
+<div class="instructions">Click & drag on a face to rotate</div>
+
+<!-- KEYBOARD HINTS -->
+<div class="key-hints">
+  <div class="key-hint-panel">
+    <div class="key-hint-title">CLASSIC MODE</div>
+    <div class="key-hint-row"><kbd>U</kbd> <kbd>D</kbd> — up / down</div>
+    <div class="key-hint-row"><kbd>L</kbd> <kbd>R</kbd> — left / right</div>
+    <div class="key-hint-row"><kbd>F</kbd> <kbd>B</kbd> — front / back</div>
+    <div class="key-hint-row"><kbd>Shift</kbd> + key = reverse</div>
+  </div>
+  <div class="key-hint-panel">
+    <div class="key-hint-title">ARROW MODE</div>
+    <div class="key-hint-row"><kbd>←</kbd><kbd>→</kbd> row · <kbd>↑</kbd><kbd>↓</kbd> column</div>
+    <div class="key-hint-row"><kbd>Shift</kbd>+<kbd>↑</kbd><kbd>↓</kbd> switch row</div>
+    <div class="key-hint-row"><kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> switch col</div>
+    <div class="key-hint-row"><kbd>Z</kbd> front CW · <kbd>X</kbd> front CCW</div>
+    <div class="key-hint-sep"></div>
+    <div class="key-hint-row">
+      Row: <span class="key-indicator" id="row-indicator">TOP</span>
+      Col: <span class="key-indicator" id="col-indicator">LEFT</span>
+    </div>
+  </div>
+</div>
+<nav class="bottom-nav">
+  <div class="bottom-nav-left">
+    <button class="nav-link" onclick="showToast('Skins coming soon!')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span class="nav-link-text">Skins</span>
+    </button>
+    <button class="nav-link" onclick="showToast('Backgrounds coming soon!')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      <span class="nav-link-text">Backgrounds</span>
+    </button>
+  </div>
+  <div class="bottom-nav-right">
+    <button class="nav-link" onclick="showAbout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <span class="nav-link-text">About</span>
+    </button>
+  </div>
+</nav>
+
+<!-- SOLVED OVERLAY -->
+<div class="solved-overlay" id="solved-overlay">
+  <div class="solved-content">
+    <div class="solved-emoji">🎉</div>
+    <div class="solved-title">CONGRATULATIONS!</div>
+    <div class="solved-subtitle">You solved the cube!</div>
+    <div class="solved-stats" id="solved-stats"></div>
+    <button class="solved-btn" onclick="closeSolved()">PLAY AGAIN</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ABOUT OVERLAY -->
+<div class="about-overlay" id="about-overlay">
+  <div class="about-content">
+    <div class="about-title">OPEN RUBIK</div>
+    <div class="about-version">v1.0</div>
+    <div class="about-text">
+      An open-source, browser-based Rubik's Cube simulator. No downloads, no installs — just play.
+    </div>
+    <div class="about-text">
+      Contributions, feedback, and ideas are welcome.
+    </div>
+    <a class="about-link" href="https://github.com/rohitmungre/open-rubik" target="_blank" rel="noopener noreferrer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      github.com/rohitmungre/open-rubik
+    </a>
+    <button class="about-close-btn" onclick="closeAbout()">CLOSE</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ========== CORE SETUP ==========
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(5, 5, 7);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// ========== LIGHTING ==========
+const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+scene.add(ambientLight);
+
+const dirLight1 = new THREE.DirectionalLight(0x00f0ff, 0.8);
+dirLight1.position.set(5, 8, 5);
+scene.add(dirLight1);
+
+const dirLight2 = new THREE.DirectionalLight(0xff00e5, 0.4);
+dirLight2.position.set(-5, -3, -5);
+scene.add(dirLight2);
+
+const pointLight = new THREE.PointLight(0x00f0ff, 0.5, 20);
+pointLight.position.set(0, 0, 8);
+scene.add(pointLight);
+
+// ========== CONSTANTS ==========
+const CUBIE_SIZE = 0.95;
+const GAP = 1.02;
+let animSpeed = 0.12;
+const ANIM_SPEED_NORMAL = 0.14;
+const ANIM_SPEED_SCRAMBLE = 0.50;
+
+// Face colors - vibrant neon versions
+const FACE_COLORS = {
+  right:  0xff3030,  // Red
+  left:   0xff8c00,  // Orange
+  top:    0xffffff,  // White
+  bottom: 0xffff00,  // Yellow
+  front:  0x00cc44,  // Green
+  back:   0x0066ff,  // Blue
+};
+
+const INNER_COLOR = 0x111122;
+
+// ========== STATE ==========
+let cubies = [];
+let cubeGroup = new THREE.Group();
+scene.add(cubeGroup);
+
+let isAnimating = false;
+let moveQueue = [];
+let moveCount = 0;
+let timerStart = null;
+let timerInterval = null;
+let isTiming = false;
+let isSolved = false;
+let scrambled = false;
+let isScrambling = false;
+
+// ========== ORBIT CONTROLS (manual) ==========
+let orbitDown = false;
+let orbitStart = { x: 0, y: 0 };
+let spherical = { theta: Math.PI / 4, phi: Math.PI / 4, radius: 10 };
+
+function updateCamera() {
+  const { theta, phi, radius } = spherical;
+  camera.position.set(
+    radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+// ========== RAYCASTING FOR FACE DRAG ==========
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let dragState = null; // { cubie, face, startPoint, startMouse }
+
+function getMouseNDC(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  return {
+    x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((e.clientY - rect.top) / rect.height) * 2 + 1
+  };
+}
+
+function getFaceNormal(intersection) {
+  const n = intersection.face.normal.clone();
+  n.transformDirection(intersection.object.matrixWorld);
+  // Snap to axis
+  const abs = [Math.abs(n.x), Math.abs(n.y), Math.abs(n.z)];
+  const maxI = abs.indexOf(Math.max(...abs));
+  const snapped = new THREE.Vector3();
+  if (maxI === 0) snapped.x = Math.sign(n.x);
+  else if (maxI === 1) snapped.y = Math.sign(n.y);
+  else snapped.z = Math.sign(n.z);
+  return snapped;
+}
+
+function getCubieLogicalPos(cubie) {
+  const pos = new THREE.Vector3();
+  cubie.getWorldPosition(pos);
+  return {
+    x: Math.round(pos.x / GAP),
+    y: Math.round(pos.y / GAP),
+    z: Math.round(pos.z / GAP)
+  };
+}
+
+function determineMoveFromDrag(faceNormal, dragDir, cubiePos) {
+  // faceNormal: which face was clicked
+  // dragDir: direction of mouse drag in 3D
+  // cubiePos: logical position {x,y,z} of the cubie
+
+  const fn = faceNormal;
+  const dd = dragDir;
+
+  // Cross product of drag direction and face normal gives rotation axis
+  const cross = new THREE.Vector3().crossVectors(dd, fn).normalize();
+
+  const absCross = [Math.abs(cross.x), Math.abs(cross.y), Math.abs(cross.z)];
+  const maxI = absCross.indexOf(Math.max(...absCross));
+
+  let axis, layer, prime;
+
+  if (maxI === 0) {
+    // X axis rotation
+    axis = 'x';
+    layer = cubiePos.x;
+    prime = cross.x < 0;
+  } else if (maxI === 1) {
+    // Y axis rotation
+    axis = 'y';
+    layer = cubiePos.y;
+    prime = cross.y < 0;
+  } else {
+    // Z axis rotation
+    axis = 'z';
+    layer = cubiePos.z;
+    prime = cross.z < 0;
+  }
+
+  // Map to standard notation
+  // Note: M follows L direction, E follows D direction, S follows F direction
+  let move = '';
+  if (axis === 'x') {
+    if (layer === 1) move = prime ? "R'" : 'R';
+    else if (layer === -1) move = prime ? 'L' : "L'";
+    else move = prime ? 'M' : "M'";  // M follows L (inverted vs R)
+  } else if (axis === 'y') {
+    if (layer === 1) move = prime ? "U'" : 'U';
+    else if (layer === -1) move = prime ? 'D' : "D'";
+    else move = prime ? 'E' : "E'";  // E follows D (inverted vs U)
+  } else {
+    if (layer === 1) move = prime ? "F'" : 'F';
+    else if (layer === -1) move = prime ? 'B' : "B'";
+    else move = prime ? "S'" : 'S';   // S follows F (same as F)
+  }
+
+  return move;
+}
+
+// ========== MOUSE EVENTS ==========
+renderer.domElement.addEventListener('mousedown', (e) => {
+  if (e.button === 2 || e.button === 1) {
+    // Right click = orbit
+    orbitDown = true;
+    orbitStart = { x: e.clientX, y: e.clientY };
+    return;
+  }
+
+  if (isAnimating) return;
+
+  const ndc = getMouseNDC(e);
+  raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
+
+  const allMeshes = [];
+  cubies.forEach(c => c.traverse(child => {
+    if (child.isMesh) allMeshes.push(child);
+  }));
+
+  const hits = raycaster.intersectObjects(allMeshes, false);
+  if (hits.length > 0) {
+    const hit = hits[0];
+    const cubie = hit.object.parent;
+    const faceNormal = getFaceNormal(hit);
+    dragState = {
+      cubie,
+      faceNormal,
+      startPoint: hit.point.clone(),
+      startMouse: { x: e.clientX, y: e.clientY },
+      moved: false
+    };
+  } else {
+    // Click on empty space = orbit
+    orbitDown = true;
+    orbitStart = { x: e.clientX, y: e.clientY };
+  }
+});
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (orbitDown) {
+    const dx = e.clientX - orbitStart.x;
+    const dy = e.clientY - orbitStart.y;
+    spherical.theta += dx * 0.008;
+    spherical.phi = Math.max(0.2, Math.min(Math.PI - 0.2, spherical.phi - dy * 0.008));
+    orbitStart = { x: e.clientX, y: e.clientY };
+    updateCamera();
+    return;
+  }
+
+  if (dragState && !dragState.moved && !isAnimating) {
+    const dx = e.clientX - dragState.startMouse.x;
+    const dy = e.clientY - dragState.startMouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 20) {
+      dragState.moved = true;
+
+      // Calculate 3D drag direction
+      const ndc1 = getMouseNDC({ clientX: dragState.startMouse.x, clientY: dragState.startMouse.y });
+      const ndc2 = getMouseNDC(e);
+
+      raycaster.setFromCamera(new THREE.Vector2(ndc1.x, ndc1.y), camera);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        camera.getWorldDirection(new THREE.Vector3()).negate(),
+        dragState.startPoint
+      );
+
+      const p1 = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, p1);
+
+      raycaster.setFromCamera(new THREE.Vector2(ndc2.x, ndc2.y), camera);
+      const p2 = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, p2);
+
+      const dragDir3D = p2.sub(p1).normalize();
+      const cubiePos = getCubieLogicalPos(dragState.cubie);
+      const move = determineMoveFromDrag(dragState.faceNormal, dragDir3D, cubiePos);
+
+      if (move) {
+        doMove(move);
+      }
+
+      dragState = null;
+    }
+  }
+});
+
+renderer.domElement.addEventListener('mouseup', () => {
+  orbitDown = false;
+  dragState = null;
+});
+
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+// Touch support
+renderer.domElement.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1 && !isAnimating) {
+    const t = e.touches[0];
+    const ndc = getMouseNDC(t);
+    raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
+
+    const allMeshes = [];
+    cubies.forEach(c => c.traverse(child => {
+      if (child.isMesh) allMeshes.push(child);
+    }));
+
+    const hits = raycaster.intersectObjects(allMeshes, false);
+    if (hits.length > 0) {
+      const hit = hits[0];
+      dragState = {
+        cubie: hit.object.parent,
+        faceNormal: getFaceNormal(hit),
+        startPoint: hit.point.clone(),
+        startMouse: { x: t.clientX, y: t.clientY },
+        moved: false
+      };
+    } else {
+      orbitDown = true;
+      orbitStart = { x: t.clientX, y: t.clientY };
+    }
+  } else if (e.touches.length === 2) {
+    orbitDown = true;
+    orbitStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+}, { passive: true });
+
+renderer.domElement.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+
+  if (orbitDown) {
+    const dx = t.clientX - orbitStart.x;
+    const dy = t.clientY - orbitStart.y;
+    spherical.theta += dx * 0.008;
+    spherical.phi = Math.max(0.2, Math.min(Math.PI - 0.2, spherical.phi - dy * 0.008));
+    orbitStart = { x: t.clientX, y: t.clientY };
+    updateCamera();
+    return;
+  }
+
+  if (dragState && !dragState.moved && !isAnimating) {
+    const dx = t.clientX - dragState.startMouse.x;
+    const dy = t.clientY - dragState.startMouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 20) {
+      dragState.moved = true;
+
+      const ndc1 = getMouseNDC({ clientX: dragState.startMouse.x, clientY: dragState.startMouse.y });
+      const ndc2 = getMouseNDC(t);
+
+      raycaster.setFromCamera(new THREE.Vector2(ndc1.x, ndc1.y), camera);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        camera.getWorldDirection(new THREE.Vector3()).negate(),
+        dragState.startPoint
+      );
+      const p1 = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, p1);
+      raycaster.setFromCamera(new THREE.Vector2(ndc2.x, ndc2.y), camera);
+      const p2 = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, p2);
+
+      const dragDir3D = p2.sub(p1).normalize();
+      const cubiePos = getCubieLogicalPos(dragState.cubie);
+      const move = determineMoveFromDrag(dragState.faceNormal, dragDir3D, cubiePos);
+      if (move) doMove(move);
+      dragState = null;
+    }
+  }
+}, { passive: false });
+
+renderer.domElement.addEventListener('touchend', () => {
+  orbitDown = false;
+  dragState = null;
+});
+
+// Scroll to zoom
+renderer.domElement.addEventListener('wheel', (e) => {
+  spherical.radius = Math.max(6, Math.min(18, spherical.radius + e.deltaY * 0.01));
+  updateCamera();
+}, { passive: true });
+
+// ========== CREATE CUBIES ==========
+function createCubie(x, y, z) {
+  const group = new THREE.Group();
+
+  // Inner black cube
+  const innerGeo = new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE);
+  const innerMat = new THREE.MeshStandardMaterial({
+    color: INNER_COLOR,
+    metalness: 0.8,
+    roughness: 0.2,
+  });
+  const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+  group.add(innerMesh);
+
+  // Colored face stickers
+  const stickerSize = CUBIE_SIZE * 0.85;
+  const stickerOffset = CUBIE_SIZE / 2 + 0.01;
+
+  const faces = [
+    { dir: 'right',  pos: [stickerOffset, 0, 0], rot: [0, Math.PI/2, 0], condition: x === 1 },
+    { dir: 'left',   pos: [-stickerOffset, 0, 0], rot: [0, -Math.PI/2, 0], condition: x === -1 },
+    { dir: 'top',    pos: [0, stickerOffset, 0], rot: [-Math.PI/2, 0, 0], condition: y === 1 },
+    { dir: 'bottom', pos: [0, -stickerOffset, 0], rot: [Math.PI/2, 0, 0], condition: y === -1 },
+    { dir: 'front',  pos: [0, 0, stickerOffset], rot: [0, 0, 0], condition: z === 1 },
+    { dir: 'back',   pos: [0, 0, -stickerOffset], rot: [0, Math.PI, 0], condition: z === -1 },
+  ];
+
+  faces.forEach(f => {
+    if (!f.condition) return;
+    const stickerGeo = new THREE.PlaneGeometry(stickerSize, stickerSize);
+    const color = new THREE.Color(FACE_COLORS[f.dir]);
+    const stickerMat = new THREE.MeshStandardMaterial({
+      color: color,
+      metalness: 0.1,
+      roughness: 0.3,
+      emissive: color.clone().multiplyScalar(0.15),
+    });
+    const sticker = new THREE.Mesh(stickerGeo, stickerMat);
+    sticker.position.set(...f.pos);
+    sticker.rotation.set(...f.rot);
+    group.add(sticker);
+  });
+
+  // Edge glow
+  const edgesGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBIE_SIZE + 0.01, CUBIE_SIZE + 0.01, CUBIE_SIZE + 0.01));
+  const edgesMat = new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.15 });
+  const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+  group.add(edges);
+
+  group.position.set(x * GAP, y * GAP, z * GAP);
+  group.userData = { logicalPos: { x, y, z } };
+
+  return group;
+}
+
+function buildCube() {
+  // Clear existing
+  cubies.forEach(c => cubeGroup.remove(c));
+  cubies = [];
+
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      for (let z = -1; z <= 1; z++) {
+        const cubie = createCubie(x, y, z);
+        cubies.push(cubie);
+        cubeGroup.add(cubie);
+      }
+    }
+  }
+}
+
+// ========== MOVE SYSTEM ==========
+function getMoveData(notation) {
+  const moves = {
+    'U':  { axis: 'y', layer:  1, angle: -Math.PI/2 },
+    "U'": { axis: 'y', layer:  1, angle:  Math.PI/2 },
+    'D':  { axis: 'y', layer: -1, angle:  Math.PI/2 },
+    "D'": { axis: 'y', layer: -1, angle: -Math.PI/2 },
+    'R':  { axis: 'x', layer:  1, angle: -Math.PI/2 },
+    "R'": { axis: 'x', layer:  1, angle:  Math.PI/2 },
+    'L':  { axis: 'x', layer: -1, angle:  Math.PI/2 },
+    "L'": { axis: 'x', layer: -1, angle: -Math.PI/2 },
+    'F':  { axis: 'z', layer:  1, angle: -Math.PI/2 },
+    "F'": { axis: 'z', layer:  1, angle:  Math.PI/2 },
+    'B':  { axis: 'z', layer: -1, angle:  Math.PI/2 },
+    "B'": { axis: 'z', layer: -1, angle: -Math.PI/2 },
+    'M':  { axis: 'x', layer:  0, angle:  Math.PI/2 },
+    "M'": { axis: 'x', layer:  0, angle: -Math.PI/2 },
+    'E':  { axis: 'y', layer:  0, angle:  Math.PI/2 },
+    "E'": { axis: 'y', layer:  0, angle: -Math.PI/2 },
+    'S':  { axis: 'z', layer:  0, angle: -Math.PI/2 },
+    "S'": { axis: 'z', layer:  0, angle:  Math.PI/2 },
+  };
+  return moves[notation];
+}
+
+function getLayerCubies(axis, layer) {
+  return cubies.filter(c => {
+    const pos = getCubieLogicalPos(c);
+    return Math.round(pos[axis]) === layer;
+  });
+}
+
+function animateMove(notation, callback) {
+  const data = getMoveData(notation);
+  if (!data) { callback && callback(); return; }
+
+  isAnimating = true;
+  const layerCubies = getLayerCubies(data.axis, data.layer);
+
+  // Create a pivot group
+  const pivot = new THREE.Group();
+  scene.add(pivot);
+
+  // Reparent cubies to pivot
+  layerCubies.forEach(c => {
+    cubeGroup.remove(c);
+    pivot.add(c);
+  });
+
+  let currentAngle = 0;
+  const targetAngle = data.angle;
+  const axisVec = new THREE.Vector3(
+    data.axis === 'x' ? 1 : 0,
+    data.axis === 'y' ? 1 : 0,
+    data.axis === 'z' ? 1 : 0
+  );
+
+  function step() {
+    const remaining = targetAngle - currentAngle;
+    const delta = remaining * animSpeed;
+
+    if (Math.abs(remaining) < 0.001) {
+      // Snap
+      pivot.rotation.set(0, 0, 0);
+      pivot.rotateOnAxis(axisVec, targetAngle);
+      pivot.updateMatrixWorld(true);
+
+      // Reparent back
+      layerCubies.forEach(c => {
+        const worldPos = new THREE.Vector3();
+        const worldQuat = new THREE.Quaternion();
+        c.getWorldPosition(worldPos);
+        c.getWorldQuaternion(worldQuat);
+
+        pivot.remove(c);
+        cubeGroup.add(c);
+
+        c.position.copy(worldPos);
+        c.quaternion.copy(worldQuat);
+
+        // Snap positions
+        c.position.x = Math.round(c.position.x / GAP) * GAP;
+        c.position.y = Math.round(c.position.y / GAP) * GAP;
+        c.position.z = Math.round(c.position.z / GAP) * GAP;
+      });
+
+      scene.remove(pivot);
+      isAnimating = false;
+      callback && callback();
+      return;
+    }
+
+    currentAngle += delta;
+    pivot.rotation.set(0, 0, 0);
+    pivot.rotateOnAxis(axisVec, currentAngle);
+
+    requestAnimationFrame(step);
+  }
+
+  step();
+}
+
+function doMove(notation) {
+  if (isSolved) return;
+
+  moveQueue.push(notation);
+  processQueue();
+}
+
+let scrambleMovesRemaining = 0;
+
+function processQueue() {
+  if (isAnimating || moveQueue.length === 0) return;
+
+  const move = moveQueue.shift();
+
+  // Count user moves at START of move (only after scramble is fully done)
+  if (scrambled && !isScrambling) {
+    if (!isTiming) {
+      isTiming = true;
+      timerStart = Date.now();
+      timerInterval = setInterval(updateTimer, 100);
+      moveCount = 1;
+      document.getElementById('move-count').textContent = moveCount;
+    } else {
+      moveCount++;
+      document.getElementById('move-count').textContent = moveCount;
+    }
+  }
+
+  animateMove(move, () => {
+    // Track scramble completion
+    if (isScrambling) {
+      scrambleMovesRemaining--;
+      if (scrambleMovesRemaining <= 0) {
+        isScrambling = false;
+        scrambled = true;
+        animSpeed = ANIM_SPEED_NORMAL;
+      }
+    }
+    // Check solved only on user moves (at end of animation)
+    else if (scrambled) {
+      if (checkSolved()) {
+        onSolved();
+      }
+    }
+
+    processQueue();
+  });
+}
+
+// ========== SCRAMBLE ==========
+function scrambleCube() {
+  if (isAnimating || moveQueue.length > 0) return;
+
+  resetCube();
+  // Reset scrambled to false during scramble — resetCube sets it true
+  scrambled = false;
+
+  setTimeout(() => {
+    const moves = ['U', "U'", 'D', "D'", 'L', "L'", 'R', "R'", 'F', "F'", 'B', "B'"];
+    const scrambleMoves = [];
+    let lastAxis = '';
+
+    for (let i = 0; i < 20; i++) {
+      let move;
+      let axis;
+      do {
+        move = moves[Math.floor(Math.random() * moves.length)];
+        axis = getMoveData(move).axis;
+      } while (axis === lastAxis);
+      lastAxis = axis;
+      scrambleMoves.push(move);
+    }
+
+    isScrambling = true;
+    isTiming = false;
+    moveCount = 0;
+    scrambleMovesRemaining = scrambleMoves.length;
+    animSpeed = ANIM_SPEED_SCRAMBLE;
+    document.getElementById('move-count').textContent = '0';
+    document.getElementById('timer').textContent = '00:00';
+
+    scrambleMoves.forEach(m => {
+      moveQueue.push(m);
+    });
+    processQueue();
+  }, 100);
+}
+
+// ========== SOLVE CHECK ==========
+function checkSolved() {
+  // For each face, check all stickers are same color
+  const faces = [
+    { axis: 'x', layer: 1, stickerDir: [1, 0, 0] },   // Right
+    { axis: 'x', layer: -1, stickerDir: [-1, 0, 0] },  // Left
+    { axis: 'y', layer: 1, stickerDir: [0, 1, 0] },    // Top
+    { axis: 'y', layer: -1, stickerDir: [0, -1, 0] },  // Bottom
+    { axis: 'z', layer: 1, stickerDir: [0, 0, 1] },    // Front
+    { axis: 'z', layer: -1, stickerDir: [0, 0, -1] },  // Back
+  ];
+
+  for (const face of faces) {
+    const layerCubies = getLayerCubies(face.axis, face.layer);
+    const colors = [];
+
+    for (const cubie of layerCubies) {
+      // Find the sticker facing the correct direction
+      const worldDir = new THREE.Vector3(...face.stickerDir);
+      let foundColor = null;
+
+      cubie.traverse(child => {
+        if (!child.isMesh || child.geometry.type !== 'PlaneGeometry') return;
+
+        const normal = new THREE.Vector3(0, 0, 1);
+        normal.applyQuaternion(child.getWorldQuaternion(new THREE.Quaternion()));
+
+        if (normal.dot(worldDir) > 0.9) {
+          foundColor = child.material.color.getHex();
+        }
+      });
+
+      if (foundColor !== null) colors.push(foundColor);
+    }
+
+    if (colors.length < 9) return false;
+    if (!colors.every(c => c === colors[0])) return false;
+  }
+
+  return true;
+}
+
+function onSolved() {
+  isSolved = true;
+  scrambled = false;
+  clearInterval(timerInterval);
+
+  const elapsed = timerStart ? Math.floor((Date.now() - timerStart) / 1000) : 0;
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const secs = (elapsed % 60).toString().padStart(2, '0');
+
+  document.getElementById('solved-stats').textContent = `${moveCount} MOVES · ${mins}:${secs}`;
+  document.getElementById('solved-overlay').classList.add('active');
+
+  // Victory particles effect
+  celebrationEffect();
+}
+
+function closeSolved() {
+  document.getElementById('solved-overlay').classList.remove('active');
+  isSolved = false;
+  scrambleCube();
+}
+
+// ========== RESET ==========
+function resetCube() {
+  if (isAnimating) return;
+
+  moveQueue = [];
+  clearInterval(timerInterval);
+  isTiming = false;
+  scrambled = true;   // allow move/time tracking after reset
+  isScrambling = false;
+  isSolved = false;
+  moveCount = 0;
+  timerStart = null;
+  animSpeed = ANIM_SPEED_NORMAL;
+
+  document.getElementById('move-count').textContent = '0';
+  document.getElementById('timer').textContent = '00:00';
+  document.getElementById('solved-overlay').classList.remove('active');
+
+  buildCube();
+}
+
+// ========== TIMER ==========
+function updateTimer() {
+  if (!timerStart) return;
+  const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const secs = (elapsed % 60).toString().padStart(2, '0');
+  document.getElementById('timer').textContent = `${mins}:${secs}`;
+}
+
+// ========== CELEBRATION ==========
+function celebrationEffect() {
+  const particles = [];
+  const particleGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const colors = [0x00f0ff, 0xff00e5, 0x39ff14, 0xffff00, 0xff3030, 0x0066ff];
+
+  for (let i = 0; i < 60; i++) {
+    const mat = new THREE.MeshBasicMaterial({ color: colors[i % colors.length], transparent: true, opacity: 1 });
+    const p = new THREE.Mesh(particleGeo, mat);
+    p.position.set(
+      (Math.random() - 0.5) * 2,
+      (Math.random() - 0.5) * 2,
+      (Math.random() - 0.5) * 2
+    );
+    p.userData.velocity = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.3,
+      Math.random() * 0.2 + 0.1,
+      (Math.random() - 0.5) * 0.3
+    );
+    scene.add(p);
+    particles.push(p);
+  }
+
+  let frame = 0;
+  function animParticles() {
+    frame++;
+    particles.forEach(p => {
+      p.position.add(p.userData.velocity);
+      p.userData.velocity.y -= 0.003;
+      p.material.opacity = Math.max(0, 1 - frame / 80);
+    });
+    if (frame < 80) {
+      requestAnimationFrame(animParticles);
+    } else {
+      particles.forEach(p => scene.remove(p));
+    }
+  }
+  animParticles();
+}
+
+// ========== TOAST ==========
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ========== ABOUT ==========
+function showAbout() {
+  document.getElementById('about-overlay').classList.add('active');
+}
+function closeAbout() {
+  document.getElementById('about-overlay').classList.remove('active');
+}
+
+// ========== KEYBOARD ==========
+// Arrow mode state: which row/column is selected
+const rowNames = ['TOP', 'MID', 'BOT'];
+const colNames = ['LEFT', 'MID', 'RIGHT'];
+let currentRow = 0;  // 0=top, 1=mid, 2=bottom
+let currentCol = 0;  // 0=left, 1=mid, 2=right
+
+function updateIndicators() {
+  const rowEl = document.getElementById('row-indicator');
+  const colEl = document.getElementById('col-indicator');
+  if (rowEl) {
+    rowEl.textContent = rowNames[currentRow];
+    rowEl.classList.add('active');
+    setTimeout(() => rowEl.classList.remove('active'), 300);
+  }
+  if (colEl) {
+    colEl.textContent = colNames[currentCol];
+    colEl.classList.add('active');
+    setTimeout(() => colEl.classList.remove('active'), 300);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  const key = e.key;
+  const shift = e.shiftKey;
+  const lower = key.toLowerCase();
+
+  // === CLASSIC MODE: U D L R F B (+ Shift for prime) ===
+  const classicMap = {
+    'u': shift ? "U'" : 'U',
+    'd': shift ? "D'" : 'D',
+    'l': shift ? "L'" : 'L',
+    'r': shift ? "R'" : 'R',
+    'f': shift ? "F'" : 'F',
+    'b': shift ? "B'" : 'B',
+  };
+
+  if (classicMap[lower]) {
+    doMove(classicMap[lower]);
+    return;
+  }
+
+  // === ARROW MODE ===
+  // Shift + Up/Down = switch selected row
+  // Shift + Left/Right = switch selected column
+  // Arrow alone = rotate that row/col
+
+  if (key === 'ArrowLeft') {
+    e.preventDefault();
+    if (shift) {
+      // Switch selected column
+      currentCol = (currentCol + 2) % 3;
+      updateIndicators();
+    } else {
+      // Rotate current row left
+      const rowMoves = ['U', "E'", "D'"];
+      doMove(rowMoves[currentRow]);
+    }
+    return;
+  }
+
+  if (key === 'ArrowRight') {
+    e.preventDefault();
+    if (shift) {
+      // Switch selected column
+      currentCol = (currentCol + 1) % 3;
+      updateIndicators();
+    } else {
+      // Rotate current row right
+      const rowMoves = ["U'", 'E', 'D'];
+      doMove(rowMoves[currentRow]);
+    }
+    return;
+  }
+
+  if (key === 'ArrowUp') {
+    e.preventDefault();
+    if (shift) {
+      // Switch selected row
+      currentRow = (currentRow + 2) % 3;
+      updateIndicators();
+    } else {
+      // Rotate current column up
+      const colMoves = ["L'", "M'", 'R'];
+      doMove(colMoves[currentCol]);
+    }
+    return;
+  }
+
+  if (key === 'ArrowDown') {
+    e.preventDefault();
+    if (shift) {
+      // Switch selected row
+      currentRow = (currentRow + 1) % 3;
+      updateIndicators();
+    } else {
+      // Rotate current column down
+      const colMoves = ['L', 'M', "R'"];
+      doMove(colMoves[currentCol]);
+    }
+    return;
+  }
+
+  // Z / X for front face
+  if (lower === 'z') {
+    doMove('F');
+    return;
+  }
+  if (lower === 'x') {
+    doMove("F'");
+    return;
+  }
+
+  // Scramble / reset
+  if (lower === 's') {
+    scrambleCube();
+  } else if (key === 'Escape') {
+    scrambleCube();
+  }
+});
+
+// ========== 2D BACKGROUND ONLY ==========
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+
+function resizeBgCanvas() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+resizeBgCanvas();
+
+// Pre-generate star field (static positions)
+const stars = [];
+for (let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random(),
+    y: Math.random(),
+    r: Math.random() * 1.2 + 0.3,
+    phase: Math.random() * Math.PI * 2,
+    speed: Math.random() * 0.5 + 0.3,
+  });
+}
+
+function drawBackground(time) {
+  const w = bgCanvas.width;
+  const h = bgCanvas.height;
+  const ctx = bgCtx;
+  const t = time * 0.001;
+
+  // Deep space base
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, w, h);
+
+  // Very soft color washes — slow drifting nebula
+  const drawGlow = (cx, cy, r, color, phase) => {
+    const x = cx + Math.sin(t * 0.05 + phase) * 30;
+    const y = cy + Math.cos(t * 0.04 + phase) * 25;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  };
+
+  drawGlow(w * 0.2, h * 0.3, w * 0.5, 'rgba(0, 40, 100, 0.03)', 0);
+  drawGlow(w * 0.8, h * 0.7, w * 0.5, 'rgba(60, 0, 80, 0.025)', 2.5);
+  drawGlow(w * 0.5, h * 0.2, w * 0.3, 'rgba(0, 80, 70, 0.015)', 5);
+
+  // Twinkling stars
+  for (const s of stars) {
+    const twinkle = 0.3 + 0.7 * (Math.sin(t * s.speed + s.phase) * 0.5 + 0.5);
+    const alpha = twinkle * 0.4;
+    ctx.beginPath();
+    ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180, 200, 255, ${alpha})`;
+    ctx.fill();
+  }
+}
+
+// ========== RENDER LOOP ==========
+function animate() {
+  requestAnimationFrame(animate);
+
+  const t = Date.now() * 0.001;
+
+  // Draw 2D background
+  drawBackground(Date.now());
+
+  // Subtle light drift
+  pointLight.position.x = Math.sin(t * 0.3) * 4;
+  pointLight.position.z = Math.cos(t * 0.3) * 6;
+
+  renderer.render(scene, camera);
+}
+
+// ========== RESIZE ==========
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  resizeBgCanvas();
+});
+
+// ========== INIT ==========
+buildCube();
+animate();
+// Auto-scramble on load
+setTimeout(() => scrambleCube(), 500);
+</script>
+</body>
+</html>
