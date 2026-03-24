@@ -1,22 +1,16 @@
 <div align="center">
 
-# 🟥🟧⬜🟨🟩🟦
-
 # Open Rubik
 
 **A free, open-source, browser-based Rubik's Cube simulator.**
 
 No downloads. No installs. No accounts. Just play.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-00f0ff.svg)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-39ff14.svg)](#contributing)
-[![Built With](https://img.shields.io/badge/built%20with-Three.js-ff00e5.svg)](https://threejs.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](#contributing)
+[![Built With](https://img.shields.io/badge/built%20with-Three.js-black.svg)](https://threejs.org)
 
 [**Play Now →**](https://rohitmungre.github.io/open-rubik)
-
-<br>
-
-<img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ff3030?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ff8c00?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ffffff?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ffff00?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-00cc44?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-0066ff?style=for-the-badge" height="8">
 
 </div>
 
@@ -224,7 +218,7 @@ MIT License — do whatever you want with it. See [LICENSE](LICENSE) for details
 
 <div align="center">
 
-<img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ff3030?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ff8c00?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ffffff?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-ffff00?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-00cc44?style=for-the-badge" height="8"> <img src="https://img.shields.io/badge/-%E2%96%A0%E2%96%A0%E2%96%A0-0066ff?style=for-the-badge" height="8">
+---
 
 **[Play Open Rubik →](https://rohitmungre.github.io/open-rubik)**
 
