@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+:root {
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #ff00e5;
+  --neon-green: #39ff14;
+  --neon-orange: #ff6600;
+  --bg-dark: #050510;
+  --bg-card: rgba(10, 10, 30, 0.85);
+  --border-glow: rgba(0, 240, 255, 0.2);
+}

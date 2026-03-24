@@ -1,0 +1,72 @@
+.controls-panel {
+  pointer-events: all;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 700px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+}
+
+.ctrl-btn {
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  color: var(--neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.ctrl-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0,240,255,0.2), inset 0 0 15px rgba(0,240,255,0.1);
+  transform: translateY(-1px);
+}
+
+.ctrl-btn:active {
+  transform: translateY(0);
+}
+
+.ctrl-btn.accent {
+  background: rgba(255, 0, 229, 0.1);
+  border-color: rgba(255, 0, 229, 0.3);
+  color: var(--neon-magenta);
+}
+
+.ctrl-btn.accent:hover {
+  background: rgba(255, 0, 229, 0.2);
+  border-color: var(--neon-magenta);
+  box-shadow: 0 0 15px rgba(255,0,229,0.2), inset 0 0 15px rgba(255,0,229,0.1);
+}
+
+.ctrl-btn.success {
+  background: rgba(57, 255, 20, 0.08);
+  border-color: rgba(57, 255, 20, 0.25);
+  color: var(--neon-green);
+}
+
+.ctrl-btn.success:hover {
+  background: rgba(57, 255, 20, 0.15);
+  border-color: var(--neon-green);
+  box-shadow: 0 0 15px rgba(57,255,20,0.2), inset 0 0 15px rgba(57,255,20,0.1);
+}
+
+.ctrl-divider {
+  width: 1px;
+  background: rgba(0,240,255,0.15);
+  margin: 0 6px;
+  align-self: stretch;
+}
